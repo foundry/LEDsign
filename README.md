@@ -11,6 +11,7 @@ Used in Tate Modern, powered by Raspberry Pi
 SMS -> USB modem -> SMS received database -> LED signboard  
 
 NB - this setup uses Gammu. Others might find Gnokii better or worse..
+
 **/pi_notes.txt**  
 	- various unedited jottings about setting up the raspberry pi and peripherals
 
