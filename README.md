@@ -31,7 +31,7 @@ NB - this setup uses Gammu. Others might find Gnokii better or worse..
 
 	- start/stop bash script for gammu-smsd
 
-**/#/home/pi/led/sms_notifier.pl**/  
+**/#/home/pi/led/sms_notifier.pl**    
 [unused - we are now counting database entries instead]  
 
 	- perl script run whenever a new msg arrives (increments a counter)
