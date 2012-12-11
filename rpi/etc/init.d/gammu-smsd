@@ -1,0 +1,69 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          gammu-smsd
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Should-Start:      mysql postgresql $syslog
+# Should-Stop:       mysql postgresql $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Gammu SMS daemon
+# Description:       Daemon for automatically sending and receiving messages using GSM 
+phone.
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/bin/gammu-smsd
+NAME=gammu-smsd
+DESC="Gammu SMS Daemon"
+
+# user which will run this daemon
+USER=gammu
+
+# Gracefully exit if the package has been removed.
+test -x $DAEMON || exit 0
+
+# Include user parameters if available
+if [ -f /etc/default/$NAME ] ; then
+	. /etc/default/$NAME
+fi
+
+. /lib/lsb/init-functions
+
+case "$1" in
+  start)
+    if grep -q '^port = /dev/null' /etc/gammu-smsdrc ; then 
+        log_warning_msg " $NAME not yet configured, please edit /etc/gammu-smsdrc"
+        exit 0
+    fi
+	log_daemon_msg "Starting $DESC" "$NAME"
+	start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid \
+		--exec $DAEMON -- $DAEMONPARAM --daemon --user $USER \
+        --pid /var/run/$NAME.pid
+    log_end_msg $?
+	;;
+  stop)
+    log_daemon_msg "Stopping $DESC" $NAME
+	start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid \
+		--exec $DAEMON
+    log_end_msg $?
+	;;
+  restart|force-reload)
+    sh $0 stop
+    sleep 1
+    sh $0 start
+	;;
+  reload)
+  	log_daemon_msg "Reloading $DESC" $NAME
+	start-stop-daemon --stop --signal HUP --quiet --pidfile \
+		/var/run/$NAME.pid --name $NAME
+	log_end_msg $?
+  ;;
+  *)
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop|restart|force-reload|reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

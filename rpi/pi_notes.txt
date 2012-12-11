@@ -1,0 +1,363 @@
+﻿defaults -
+user pi
+pw raspberry
+
+http://elinux.org/RPi_Easy_SD_Card_Setup
+
+copying image to SD card...
+diskutil unmount /dev/diskNs1
+sudo dd bs=1m if=path/to/img/file of=/dev/rdiskN
+diskutil eject /dev/rdisk3
+
+expanding the partition:
+http://xbfish.com/2012/07/30/expand-your-sd-card-on-raspberry-pi-running-on-raspbian-wheezy/
+on the pi...
+{
+	sudo raspi-config
+    expand_rootfs           Expand root partition to fill SD card
+    
+    sudo shutdown -r now
+
+}
+
+copying SD card to image file...
+diskutil unmount /dev/diskNs1
+sudo dd bs=1m if=/dev/rdiskN of=path/to/img/file
+
+
+http://elinux.org/RPi_Resize_Flash_Partitions
+THIS IS A VERY GOOD SETUP GUIDE from a mac user
+http://gettingstartedwithraspberrypi.tumblr.com/
+
+ssh
+	sudo apt-get install openssh-server chkconfig
+	sudo chkconfig ssh on
+	sudo service ssh start	
+
+setting IP address
+	http://wiki.debian.org/NetworkConfiguration
+	if we need a fixed IP
+	can assign it in the file
+	/etc/network/interfaces
+
+otherwise for dhcp it should look like this
+	-----------------
+	auto lo eth0
+	
+	iface lo inet loopback
+	iface eth0 inet dhcp
+	=================
+
+appletalk
+	apt-get install netatalk
+
+
+
+VNC
+tightvncserver
+NB... it will listen on port 590X where X is the tightvnc screen (1,2,3,4...)
+
+autoconf
+	apt-get install avahi-daemon avahi-discover libnss-mdns
+s
+configure for netatalk 
+(if you use netatalk  > 2.2.3 you don't have to do this but debian shipped with 2.1.2)
+	-----------------
+	<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+	<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+	<service-group>
+	   <name replace-wildcards="yes">%h</name>
+	   <service>
+		  <type>_afpovertcp._tcp</type>
+		  <port>548</port>
+	   </service>
+	</service-group> 
+	=================
+
+configure for vnc
+	-----------------
+	http://gettingstartedwithraspberrypi.tumblr.com/
+	Run “sudo vi /etc/avahi/services/rfb.service”
+	Enter the following: 
+	<?xml version="1.0" standalone='no'?>
+	<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+	<service-group>
+	  <name replace-wildcards="yes">%h</name>
+	  <service>
+		<type>_rfb._tcp</type>
+		<port>5901</port>
+	  </service>
+	</service-group>
+	=================
+	
+	then
+	"sudo /etc/init.d/avahi-daemon restart”
+
+connecting from mac
+	in finder go>connect to server
+	vnc://pi:raspberry@raspberrypi.local:5901
+	IF BONJOUR SET UP ON MACHINE
+
+lots of info about screen sharing
+	http://reviews.cnet.com/8301-13727_7-10329122-263.html
+
+
+
+set pi to autologin and start tightvnc on startup
+	http://www.debianadmin.com/how-to-auto-login-and-startx-without-a-display-manager-in-debian.html
+	(you don't autostart startx, just tightvnc... an x session starts when you login via vnc)
+	1. edit /etc/inittab
+	find
+	1:2345:respawn:/sbin/getty 115200 tty1
+	comment it out
+	#1:2345:respawn:/sbin/getty 115200 tty1
+	replace it with
+	1:2345:respawn:/bin/login -f [USERNAME] tty1 </dev/tty1 >/dev/tty1 2>&1
+	
+	in [USERNAME]'s bash_profile add
+	tightvncserver :1 -geometry 1024x728 -depth 24
+	
+wireless
+	MicroNEXT MN-WD552B 
+	download micronext driver from
+	http://www.wireless-driver.com/micronext-mn-wd552b-wireless-windows-inux-macos-drivers/
+	
+	the device is RTL8188CUS (chipset) / rtl8192cu (driver)
+	Bus 001 Device 004: ID 0bda:8176 Realtek Semiconductor Corp. RTL8188CUS 802.11n WLAN Adapter
+   in WHEEZY it is supposed to be installable with 
+   apt-get install firmware-realtek wireless-tools
+   
+   bpi@raspberrypi:/lib/firmware/rtlwifi$ ls -l
+	total 272
+	-rw-r--r-- 1 root root  13540 Jan 19 03:26 rtl8192cfw.bin
+	-rw-r--r-- 1 root root  16014 Jan 19 03:26 rtl8192cufw.bin
+	-rw-r--r-- 1 root root  20526 Jan 19 03:26 rtl8192defw.bin
+	-rw-r--r-- 1 root root  88856 Jan 19 03:26 rtl8192sefw.bin
+	-rw-r--r-- 1 root root 129304 Jan 19 03:26 rtl8712u.bin
+	   
+   original not-working module in 
+   /lib/modules/3.1.9+/kernel/net/wireless/rtlwifi/rtl8192cu/rtl8192cu.ko
+   (has to be blacklisted)
+   manually-installed module in
+   /lib/modules/3.1.9+/kernel/drivers/net/wireless/8192cu.ko
+   and
+   /lib/modules/3.1.9+/kernel/net/wireless/8192cu.ko
+   
+    all of the files seem to be there but it is not working
+    iwconfig brings up nothing
+    
+    if we try to install drivers supplied by micronext..
+    running 'install.sh' ...
+    make: *** /lib/modules/3.1.9+/build: No such file or directory.  Stop
+    
+    the precompiled driver seems to not work:
+    pi@raspberrypi:~/led$ sudo depmod
+ERROR: failed to load symbols from /lib/modules/3.1.9+/kernel/net/wireless/8192cu.ko: Invalid argument
+
+"If you have blacklisted the original rtl8192 module you have to load the new one
+modprobe 8192cu
+or add this line
+8192cu
+to /etc/modules and reboot to test... this will load this module regardless of hardware present or not and if hardware is there, it will work"
+
+this was hard. didn't really know what i was doing but here are some links
+	Trying to get an RTL8188CUS wireless USB NIC working
+	http://www.raspberrypi.org/phpBB3/viewtopic.php?f=6&t=4992
+	WiFi Adapter Support
+	http://www.raspberrypi.org/phpBB3/viewtopic.php?f=63&t=4681&start=25
+	this was prob the most useful...
+	http://wiki.debian.org/rtl819x
+
+for configuring the interface
+	http://wiki.debian.org/WiFi/HowToUse
+	http://www.alyz.com/debian.xhtml
+
+	(squeeze)
+	but this dongle seems unreliable, the connection dies after an hour or so. try another?
+	(wheezy)
+	doesnt work at all
+	
+	latest attempt from here
+	http://dl.dropbox.com/u/80256631/install-rtl8188cus-20120617.sh
+	- added the firmware to /usr/local/lib/firmware/
+	- copied the SAME driver to two locations
+	/lib/modules/3.1.9+/kernel/drivers/net/wireless/
+	/lib/modules/3.1.9+/kernel/net/wireless/
+	i don't know which one it is using but the drivers are identical
+	now it is working... had to reserve an ip for it on the dhcp server...
+	but the throughput is terrible (like on squeeze) - eg 1.5Mbits/sec. 
+	Should be getting 10-100 times that! I suppose it is enough for ssh-control...
+	
+	
+	Wireless: TP-Link TL-WN722N USB wireless adapter (Debian 6)
+	http://www.elinux.org/RPi_Peripherals
+
+
+USBMODEM
+http://rootprompt.apatsch.net/2012/02/29/huawei-e1552-modem-with-debian-linux/
+you need  usb-modeswitch installed sudo to switch it from mass storage to modem use
+apt-get install usb-modeswitch (NOT usb_modeswitch)
+
+LAMP
+http://fusionstrike.com/2012/setting-ssh-ftp-raspberry-pi-debian
+wheezy: trying lighttpd instead apt-get lighttpd
+are good for ssh, ftp, php, apache mysql, phpmyadmin
+
+PHPMYADMIN
+http://host/phpmyadmin/
+
+
+=importing database=
+mysql> create database texts;
+mysql -u root -p texts < test-db.sql
+
+
+GNOKII (INSTALL MYSQL FIRST!!)
+SMS Daemon: http://www.debian-administration.org/articles/419 
+apt-get install gnokii 
+you MAY need to install these as well
+gnokii-cli  gnokii-common 
+looks like you WILL have to install these
+gnokii-smsd  gnokii-mysql gnokii-smsd-mysql
+but they may get all installed with the main one
+cf http://packages.debian.org/search?suite=default&section=all&arch=any&searchon=names&keywords=gnokii
+
+the database
+/usr/share/doc/gnokii-smsd-mysql/sms.tables.mysql.sql
+mysql> create database sms;
+mysql -u root -p sms < /usr/share/doc/gnokii-smsd-mysql/sms.tables.mysql.sql
+
+permissions issues
+can't access USB unless root
+need to add a udev rule to 
+- alias the usb device (most likely /dev/ttyUSB0) to /dev/usbmodem
+- change permissions on the device to 0666 so we dont need to be root to access it
+cd /etc/udev/rules.d
+sudo vi z21_persistent-local.rules
+ATTRS{product}=="HUAWEI Mobile", MODE="0666", SYMLINK+="usbmodem", GROUP="dialout"
+#ATTRS{bInterfaceNumber}=="00"  //first of 3 interfaces eg ttyUSB0 ttyUSB1 ttyUSB2
+(in fact we don't need to worry about the interface number, 
+it just seems to grab the first off the list and alias it to /dev/usbmodem
+this is unreliable... sometimes alias points to sda or other thing...
+
+... after much trial and error could only get this to work reliably
+13 KERNEL=="ttyUSB0",MODE="0666"
+crw-rw-rwT  1 root dialout 188,   0 Jan  1  1970 ttyUSB0
+crw-rw---T  1 root dialout 188,   1 Jan  1  1970 ttyUSB1
+crw-rw---T  1 root dialout 188,   2 Jan  1  1970 ttyUSB2
+
+
+so all we do is change the permissions. 
+NOW NOTICED that a symlink 'gsmmodem' is being added (dont know what process is doing that)
+so lets use 'gsmmodem' in our conf files...
+
+
+then this setup (in ~.gnokiirc) works with the TMobile HUAWEI black dongle
+ port = /dev/gsmmodem
+ model = AT
+ connection = serial
+
+ALSO GAMMU
+sudo apt-get install gammu
+check other gammu bits
+sudo apt-cache search GAMMU
+
+gammue conf is /etc/gammurc
+also need to conf /etc/gammu-smsdrc
+
+NB - if keyboard is also plugged in then modem access fails/hangs,
+regardless of whether we address it as /ttyUSB0 or /gsmmodem
+
+========STARTING AND STOPPING SERVICES AT BOOT========
+startup scripts are in /etc/init.d
+this is how to stop one...
+update-rc.d -f foobar remove
+and to start one again...
+update-rc.d foobar defaults
+
+
+
+========MEASURING THE SPEED OF THE SD CARD=========
+pi@raspberrypi:~/led$ sudo dd if=/dev/mmcblk0 of=/dev/null bs=1M count=100
+
+http://www.raspberrypi.org/phpBB3/viewtopic.php?f=63&t=4076&p=54197&hilit=sdhc+card+speed#p54197
+SanDisk 4GB Ultra (30MB/s) SDHC Class 6 Memory Card
+8gb sandisk Ultra Class 6 (SDHC) "awesome"
+
+ twin pack Sandisk Ultra 8Gb Class 6 cards (that's 2 cards for $26... which I think is a good deal).
+ However, this card might be a Costco special. Look at the photo below. It's a Class 6 "Ultra" card but the read speed is 30MB/s!! Normally Ultra is 20MB/s. I also searched the Sandisk site and this card is not listed! Weird.
+
+From what I seen so far from google search's, the best cards are from Sandisk Class 6.
+
+But we have the Extreme and Ultra series.. Don't know whit best…
+
+sandisk extreme sdhc  8gb class 10:
+sandisk extreme has the reputation of the only sd card that is suitable for serious server use. if this one doesn't work for raspi i'll definitely yell at someone.
+
+Sandisk 8GB Class 4 SDHC
+
+available in pcworld
+4gb ultra class 4 15mb/s 
+8gb ultra class 4 15mb/
+
+        
+========GAMMU NOTES========
+it looks like 
+- when a txt msg is received by the stick
+- gammu-smsd freezes for around 20 minutes (the log stops)
+- THEN it picks up the message and sends it to MYSQL
+	- SO now we need to try gnokii-smsd!
+	http://wiki.gnokii.org/index.php/SMSD#SMSD
+	/usr/sbin/smsd -u root -d sms_gnokii -c localhost -m mysql -b IN -f /var/log/smsdaemon.log
+	
+	OR... periodically say hourly, on a crontab...
+	sudo ./gammu-smsd stop; sudo usb_modeswitch -R -W -v 12d1 -p 1001; sudo ./gammu-smsd start
+	(modeswitch resets the usb device... i think...)
+
+how do we ensure the crontab is only operational if gammu-smsd is running??
+  - set the crontab in the init.d/gammu-smsd start script
+  - remove it in the gammu-smsd stop script
+  
+  or... the cron script does a test to see if gammu-smsd is running...
+  
+  
+  crontab
+  0 * * * * /etc/init.d/gammu-smsd stop; sudo usb_modeswitch -R -W -v 12d1 -p 1001; /etc/init.d/gammu-smsd start
+ 
+ start 
+cat /etc/cron.hourly/smsd "
+  !# /usr/bin/sh
+  if (smsd is running)
+    if (ps -e | grep "gammu-smsd")
+    echo "restarting gammu...";
+    /etc/init.d/gammu-smsd stop; 
+    sudo usb_modeswitch -R -W -v 12d1 -p 1001;
+    /etc/init.d/gammu-smsd start
+  fi"
+  
+stop
+rm /etc/cron.hourly/smsd
+
+============================
+----instructions to others
+
+i've been using Debian Wheezy on the pi - (which is what they are now calling Raspbian, i haven't installed the latest version)
+
+my 'live pi' is at http://pi.foundry.tv   (just a single page)
+
+you may be able to log in via ssh (if my firewall is open) as pi / maraberry
+
+if so you will see a version of the feed that gets sent to the led sign... 
+
+try sending it a text on 07903 905708
+
+~/led/smsd.pl is the script that remounts the USB every minute (currently running via a remote ssh session)
+
+/etc/inet.d/gammu-smsd is the startup script for gammu, the software that pulls sms messages off the sim card and adds them to a mysql database.
+
+it's config file is /etc/gammu-smsdrc
+
+/led/led_db_o.pl is the perl script to pull messages from the database and send them to the sign (that's what is running when you log in - it echoes the sign texts to bash)
+
+
+==============================

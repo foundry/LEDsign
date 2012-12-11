@@ -1,0 +1,34 @@
+#configuration file for Gammu SMS Daemon
+
+# Gammu library configuration, see gammurc(5)
+[gammu]
+# Please configure this!
+port =/dev/ttyUSB0
+connection = at
+
+# SMSD configuration, see gammu-smsdrc(5)
+[smsd]
+service = sql  
+logfile = /var/log/smsd.log
+# Increase for debugging information
+debuglevel = 2 
+logformat = textalldate
+
+# Paths where messages are stored
+inboxpath = /var/spool/gammu/inbox/
+outboxpath = /var/spool/gammu/outbox/
+sentsmspath = /var/spool/gammu/sent/
+errorsmspath = /var/spool/gammu/error/
+
+#database backend options
+user = root
+password = marabella
+host = localhost 
+database = sms_gammu
+driver = native_mysql
+sql = mysql
+
+#run this notifier script whenever we get a new msg
+#RunOnReceive = /home/pi/led/sms_notifier.pl
+use_locking = yes
+resetfrequency = 600
